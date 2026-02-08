@@ -1,0 +1,31 @@
+{
+  "_comment": "ExpenseOwl User Defaults - Safe to edit!",
+  "_description": "This file contains your personal preferences that will be applied when you first start the app. You can safely edit these values. After the first run, use the Settings page in the app to make changes.",
+
+  "categories": [
+    "Food",
+    "Groceries",
+    "Travel",
+    "Rent",
+    "Utilities",
+    "Entertainment",
+    "Healthcare",
+    "Shopping",
+    "Miscellaneous",
+    "Income"
+  ],
+
+  "_categories_help": "Add, remove, or rename categories as you like. Each category should be on its own line in quotes, separated by commas.",
+
+  "currency": "usd",
+
+  "_currency_help": "Change to your preferred currency code (lowercase). Supported: usd, eur, gbp, jpy, cny, krw, inr, rub, brl, zar, aed, aud, cad, chf, hkd, bdt, sgd, thb, try, mxn, php, pln, sek, nzd, dkk, idr, ils, vnd, myr, mad",
+
+  "startDate": 1,
+
+  "_startDate_help": "The day of the month (1-31) when your billing cycle starts. For example, if your credit card bill is due on the 15th, enter 15.",
+
+  "theme": "system",
+
+  "_theme_help": "Options: 'system' (uses your device's theme), 'light', or 'dark'"
+}

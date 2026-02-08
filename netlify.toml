@@ -1,0 +1,11 @@
+[build]
+  publish = "public"
+
+# Serve index.html for the root path
+[[redirects]]
+  from = "/"
+  to = "/index.html"
+  status = 200
+
+# Let all other files serve as-is (table.html, settings.html, etc.)
+# No SPA catch-all needed since we use direct .html links

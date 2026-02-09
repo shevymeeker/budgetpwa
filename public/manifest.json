@@ -1,13 +1,12 @@
 {
     "name": "ExpenseOwl",
     "short_name": "ExpenseOwl",
-    "description": "Simple offline expense tracking",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",
     "orientation": "any",
-    "background_color": "#081528",
-    "theme_color": "#081528",
+    "background_color": "#0b0f19",
+    "theme_color": "#0b0f19",
     "icons": [
         {
             "src": "/pwa/icon-192.png",

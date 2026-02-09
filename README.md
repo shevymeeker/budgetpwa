@@ -1,4 +1,4 @@
-# ExpenseOwl
+# Wildman Money Tracker
 
 A simple, self-hosted expense tracking PWA with monthly pie-chart visualization and cashflow tracking.
 
@@ -23,18 +23,18 @@ Single-user, no-frills expense tracking for home lab deployments. No budgeting, 
 ### Docker (recommended)
 
 ```bash
-docker run -d --name expenseowl \
+docker run -d --name wildman-money-tracker \
   -p 8080:8080 \
-  -v expenseowl:/app/data \
-  tanq16/expenseowl:main
+  -v wildman-money-tracker:/app/data \
+  tanq16/wildman-money-tracker:main
 ```
 
 ### Docker Compose
 
 ```yaml
 services:
-  expenseowl:
-    image: tanq16/expenseowl:main
+  wildman-money-tracker:
+    image: tanq16/wildman-money-tracker:main
     restart: unless-stopped
     ports:
       - 8080:8080
@@ -45,8 +45,8 @@ services:
 ### Build from Source
 
 ```bash
-go build ./cmd/expenseowl
-./expenseowl
+go build ./cmd/wildman-money-tracker
+./wildman-money-tracker
 ```
 
 Open `http://localhost:8080` in your browser.

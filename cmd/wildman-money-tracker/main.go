@@ -8,9 +8,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/tanq16/expenseowl/internal/api"
-	"github.com/tanq16/expenseowl/internal/storage"
-	"github.com/tanq16/expenseowl/internal/web"
+	"github.com/tanq16/wildman-money-tracker/internal/api"
+	"github.com/tanq16/wildman-money-tracker/internal/storage"
+	"github.com/tanq16/wildman-money-tracker/internal/web"
 )
 
 var version = "dev"

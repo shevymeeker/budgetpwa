@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tanq16/expenseowl/internal/storage"
-	"github.com/tanq16/expenseowl/internal/web"
+	"github.com/tanq16/wildman-money-tracker/internal/storage"
+	"github.com/tanq16/wildman-money-tracker/internal/web"
 )
 
 // Handler holds the storage interface

@@ -1,6 +1,6 @@
 {
-    "name": "ExpenseOwl",
-    "short_name": "ExpenseOwl",
+    "name": "Wildman Money Tracker",
+    "short_name": "Wildman Money Tracker",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#161514",

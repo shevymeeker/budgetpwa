@@ -1,4 +1,4 @@
-const CACHE_NAME = 'expenseowl-v1';
+const CACHE_NAME = 'wildman-money-tracker-v1';
 const STATIC_ASSETS = [
     '/',
     '/table',

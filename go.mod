@@ -1,4 +1,4 @@
-module github.com/tanq16/expenseowl
+module github.com/tanq16/wildman-money-tracker
 
 go 1.23.2
 

@@ -38,7 +38,8 @@ const DEFAULT_CONFIG = {
         'Entertainment', 'Healthcare', 'Shopping', 'Miscellaneous', 'Income'
     ],
     currency: 'usd',
-    startDate: 1
+    startDate: 1,
+    budgets: {}
 };
 
 // ---- Config Operations ----
@@ -49,7 +50,7 @@ async function getConfig() {
         const tx = db.transaction('config', 'readonly');
         const store = tx.objectStore('config');
         const results = {};
-        const keys = ['categories', 'currency', 'startDate'];
+        const keys = ['categories', 'currency', 'startDate', 'budgets'];
         let completed = 0;
         keys.forEach(key => {
             const req = store.get(key);
@@ -60,7 +61,8 @@ async function getConfig() {
                     resolve({
                         categories: results.categories,
                         currency: results.currency,
-                        startDate: results.startDate
+                        startDate: results.startDate,
+                        budgets: results.budgets || {}
                     });
                 }
             };
@@ -440,6 +442,81 @@ async function importCSV(file) {
         reader.onerror = () => reject(reader.error);
         reader.readAsText(file);
     });
+}
+
+// ---- JSON Backup/Restore ----
+
+async function exportAllData() {
+    const db = await openDB();
+    const readStore = (storeName) => new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readonly');
+        const store = tx.objectStore(storeName);
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+    });
+
+    const [expenses, configItems, recurringExpenses] = await Promise.all([
+        readStore('expenses'),
+        readStore('config'),
+        readStore('recurringExpenses')
+    ]);
+
+    const config = {};
+    configItems.forEach(item => { config[item.key] = item.value; });
+
+    const data = {
+        version: 1,
+        exportDate: new Date().toISOString(),
+        expenses,
+        config,
+        recurringExpenses
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `expenseowl-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+async function importAllData(file) {
+    const text = await file.text();
+    const data = JSON.parse(text);
+
+    if (!data.expenses || !Array.isArray(data.expenses)) {
+        throw new Error('Invalid backup: missing expenses array');
+    }
+    if (!data.config || typeof data.config !== 'object') {
+        throw new Error('Invalid backup: missing config object');
+    }
+
+    const db = await openDB();
+
+    const clearAndWrite = (storeName, items) => new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        const store = tx.objectStore(storeName);
+        store.clear();
+        items.forEach(item => store.put(item));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+
+    const configItems = Object.entries(data.config).map(([key, value]) => ({ key, value }));
+
+    await Promise.all([
+        clearAndWrite('expenses', data.expenses),
+        clearAndWrite('config', configItems),
+        clearAndWrite('recurringExpenses', data.recurringExpenses || [])
+    ]);
+
+    return {
+        expenses: data.expenses.length,
+        recurringExpenses: (data.recurringExpenses || []).length,
+        configKeys: Object.keys(data.config).length
+    };
 }
 
 function parseCSVLine(line) {

@@ -64,48 +64,57 @@
         <div id="addExpenseContainer" style="display: none;">
             <div class="form-container">
                 <form id="expenseForm" class="expense-form">
-                    <div class="form-group">
-                        <label for="name">Name</label>
-                        <input type="text" id="name" value="-" required>
+                    <div class="form-group form-group-amount">
+                        <label for="amount">Amount</label>
+                        <input type="number" id="amount" step="0.01" min="0.01" max="9000000000000000" inputmode="decimal" placeholder="0.00" required>
                     </div>
 
-                    <div class="form-group">
-                        <label for="category">Category</label>
-                        <select id="category" required>
+                    <div class="form-group form-group-category">
+                        <label>Category</label>
+                        <div id="categoryChips" class="category-chips"></div>
+                        <select id="category" required class="category-select-desktop">
                             <option value="">categories</option>
                         </select>
                     </div>
 
-                    <div class="form-group">
-                        <label for="tags-input">Tags</label>
-                        <div id="tags-input-container" class="tags-input-container">
-                            <div id="selected-tags" class="selected-tags"></div>
-                            <input type="text" id="tags-input" placeholder="(optional)">
+                    <div class="form-optional-toggle">
+                        <button type="button" id="toggleOptionalFields" class="nav-button">
+                            <i class="fa-solid fa-chevron-down"></i> More Options
+                        </button>
+                    </div>
+
+                    <div id="optionalFields" class="form-optional-fields">
+                        <div class="form-group">
+                            <label for="name">Name</label>
+                            <input type="text" id="name" value="-" required>
                         </div>
-                        <div id="tags-dropdown" class="tags-dropdown"></div>
-                    </div>
 
-                    <div class="form-group">
-                        <label for="amount">Amount</label>
-                        <input type="number" id="amount" step="0.01" min="0.01" max="9000000000000000" required>
-                    </div>
+                        <div class="form-group">
+                            <label for="tags-input">Tags</label>
+                            <div id="tags-input-container" class="tags-input-container">
+                                <div id="selected-tags" class="selected-tags"></div>
+                                <input type="text" id="tags-input" placeholder="(optional)">
+                            </div>
+                            <div id="tags-dropdown" class="tags-dropdown"></div>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="date">Date</label>
-                        <input type="date" id="date" required>
-                        <script>
-                            const today = new Date();
-                            const year = today.getFullYear();
-                            const month = String(today.getMonth() + 1).padStart(2, '0');
-                            const day = String(today.getDate()).padStart(2, '0');
-                            const formattedDate = `${year}-${month}-${day}`;
-                            document.getElementById('date').value = formattedDate;
-                        </script>
-                    </div>
+                        <div class="form-group">
+                            <label for="date">Date</label>
+                            <input type="date" id="date" required>
+                            <script>
+                                const today = new Date();
+                                const year = today.getFullYear();
+                                const month = String(today.getMonth() + 1).padStart(2, '0');
+                                const day = String(today.getDate()).padStart(2, '0');
+                                const formattedDate = `${year}-${month}-${day}`;
+                                document.getElementById('date').value = formattedDate;
+                            </script>
+                        </div>
 
-                    <div class="form-group form-group-checkbox">
-                        <label for="reportGain">Report Gain</label>
-                        <input type="checkbox" id="reportGain" class="styled-checkbox">
+                        <div class="form-group form-group-checkbox">
+                            <label for="reportGain">Report Gain</label>
+                            <input type="checkbox" id="reportGain" class="styled-checkbox">
+                        </div>
                     </div>
 
                     <button type="submit" class="nav-button">Add Expense</button>
@@ -137,6 +146,21 @@
                 <div class="cashflow-value" id="cashflow-balance"></div>
             </div>
         </div>
+
+        <nav class="bottom-nav" aria-label="Main navigation">
+            <a href="/" class="bottom-nav-item active">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="/table.html" class="bottom-nav-item">
+                <i class="fa-solid fa-table"></i>
+                <span>Table</span>
+            </a>
+            <a href="/settings.html" class="bottom-nav-item">
+                <i class="fa-solid fa-gear"></i>
+                <span>Settings</span>
+            </a>
+        </nav>
     </div>
 
     <script src="/functions.js"></script>
@@ -151,6 +175,7 @@
         let categoryColors = {};
         let allTags = new Set();
         let selectedTags = new Set();
+        let categoryBudgets = {};
 
         function assignCategoryColors(categories) {
             categories.forEach((category, index) => {
@@ -304,6 +329,25 @@
                         <span class="amount">${amount}</span>
                     </div>
                 `;
+
+                if (categoryBudgets[category]) {
+                    const budget = categoryBudgets[category];
+                    const spent = categoryDataItem ? categoryDataItem.total : 0;
+                    const pct = Math.min((spent / budget) * 100, 100);
+                    const overBudget = spent > budget;
+                    const barColor = overBudget ? '#EF4444' : 'var(--accent)';
+                    const budgetBar = document.createElement('div');
+                    budgetBar.className = 'budget-progress';
+                    budgetBar.innerHTML = `
+                        <div class="budget-bar-track">
+                            <div class="budget-bar-fill" style="width: ${pct}%; background-color: ${barColor};"></div>
+                        </div>
+                        <span class="budget-label">${formatCurrency(spent)} / ${formatCurrency(budget)}</span>
+                    `;
+                    item.style.flexWrap = 'wrap';
+                    item.appendChild(budgetBar);
+                }
+
                 item.addEventListener('click', () => toggleCategory(category));
                 legendContainer.appendChild(item);
             });
@@ -334,6 +378,22 @@
             updateChartAndLegend();
         }
 
+        function renderCategoryChips(categories) {
+            const container = document.getElementById('categoryChips');
+            const select = document.getElementById('category');
+            container.innerHTML = categories.map((cat, i) =>
+                `<button type="button" class="category-chip${i === 0 ? ' active' : ''}" data-category="${escapeHTML(cat)}">${escapeHTML(cat)}</button>`
+            ).join('');
+            if (!select.value && categories.length > 0) select.value = categories[0];
+            container.addEventListener('click', (e) => {
+                const chip = e.target.closest('.category-chip');
+                if (!chip) return;
+                container.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                select.value = chip.dataset.category;
+            });
+        }
+
         async function initialize() {
             try {
                 const config = await getConfig();
@@ -343,6 +403,7 @@
                 ).join('');
                 currentCurrency = config.currency;
                 startDate = config.startDate;
+                categoryBudgets = config.budgets || {};
 
                 const data = await getAllExpenses();
                 allExpenses = Array.isArray(data) ? data : [];
@@ -356,6 +417,7 @@
 
                 const uniqueCategories = [...new Set(allExpenses.map(exp => exp.category))];
                 assignCategoryColors(uniqueCategories);
+                renderCategoryChips(config.categories);
                 updateMonthDisplay();
                 updateChartAndLegend();
                 setupTagInput();
@@ -520,6 +582,26 @@
             if (e.target.value === '-') {
                 e.target.value = '';
             }
+        });
+
+        document.getElementById('toggleOptionalFields').addEventListener('click', function() {
+            const fields = document.getElementById('optionalFields');
+            fields.classList.toggle('expanded');
+            const icon = this.querySelector('i');
+            icon.classList.toggle('fa-chevron-down');
+            icon.classList.toggle('fa-chevron-up');
+        });
+
+        // Swipe on chart container for month navigation
+        const chartContainer = document.querySelector('.chart-container');
+        enableSwipeNavigation(chartContainer, () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            updateMonthDisplay();
+            updateChartAndLegend();
+        }, () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            updateMonthDisplay();
+            updateChartAndLegend();
         });
     </script>
 </body>

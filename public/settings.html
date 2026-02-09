@@ -57,6 +57,16 @@
         </div>
 
         <div class="form-container">
+            <h2 align="center">Budget Limits</h2>
+            <p style="text-align: center; color: var(--text-secondary); font-size: 0.85rem;">
+                Set monthly spending limits per category (leave empty for no limit)
+            </p>
+            <div id="budget-inputs" class="budget-inputs-list"></div>
+            <button id="saveBudgets" class="nav-button">Save Budgets</button>
+            <div id="budgetsMessage" class="form-message"></div>
+        </div>
+
+        <div class="form-container">
             <h2 align="center">Category Settings</h2>
             <div id="categories-manager">
                 <div id="categories-list" class="categories-list">
@@ -115,6 +125,17 @@
                     </div>
                 </div>
                 <div id="importMessage" class="form-message"></div>
+                <hr style="border-color: var(--border); margin: 1rem 0;">
+                <div class="export-buttons">
+                    <div class="export-options">
+                        <button id="json-export-btn" class="nav-button">Backup All Data</button>
+                    </div>
+                    <div class="import-option">
+                        <label for="json-import-file" class="nav-button">Restore from Backup</label>
+                        <input type="file" id="json-import-file" accept=".json" style="display: none;">
+                    </div>
+                </div>
+                <div id="restoreMessage" class="form-message"></div>
                 <div id="importSummary" class="import-summary" style="display: none;">
                     <h3>Import Summary</h3>
                     <p>Total Processed: <span id="summary-processed"></span></p>
@@ -182,6 +203,32 @@
             <div id="recurringExpenseMessage" class="form-message"></div>
             <h3 align="center" style="margin-top: 2rem;">Existing Recurring Transactions</h3>
             <div id="recurring-expenses-list">
+            </div>
+        </div>
+
+        <nav class="bottom-nav" aria-label="Main navigation">
+            <a href="/" class="bottom-nav-item">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="/table.html" class="bottom-nav-item">
+                <i class="fa-solid fa-table"></i>
+                <span>Table</span>
+            </a>
+            <a href="/settings.html" class="bottom-nav-item active">
+                <i class="fa-solid fa-gear"></i>
+                <span>Settings</span>
+            </a>
+        </nav>
+    </div>
+
+    <div id="restoreConfirmModal" class="modal">
+        <div class="modal-content">
+            <h3>Restore from Backup</h3>
+            <p>This will replace ALL existing data (expenses, settings, recurring transactions) with the backup. This cannot be undone.</p>
+            <div class="modal-buttons">
+                <button class="modal-button" onclick="closeRestoreModal()">Cancel</button>
+                <button class="modal-button confirm" onclick="confirmRestore()">Restore</button>
             </div>
         </div>
     </div>
@@ -265,6 +312,8 @@
         let recurringExpenses = [];
         let recurringExpenseToDelete = null;
         let recurringExpenseToEdit = null;
+        let currentBudgets = {};
+        let pendingRestoreFile = null;
 
         function showMessage(elementId, message, isSuccess) {
             const messageDiv = document.getElementById(elementId);
@@ -658,6 +707,53 @@
             }
         }
 
+        // --- Budget Management ---
+        function renderBudgetInputs() {
+            const container = document.getElementById('budget-inputs');
+            container.innerHTML = categories.map(cat => `
+                <div class="budget-input-row">
+                    <label>${escapeHTML(cat)}</label>
+                    <input type="number" step="0.01" min="0"
+                           data-category="${escapeHTML(cat)}"
+                           value="${currentBudgets[cat] || ''}"
+                           placeholder="No limit">
+                </div>
+            `).join('');
+        }
+
+        async function saveBudgets() {
+            const inputs = document.querySelectorAll('#budget-inputs input[data-category]');
+            const budgets = {};
+            inputs.forEach(input => {
+                const val = parseFloat(input.value);
+                if (!isNaN(val) && val > 0) {
+                    budgets[input.dataset.category] = val;
+                }
+            });
+            await setConfigValue('budgets', budgets);
+            currentBudgets = budgets;
+            showMessage('budgetsMessage', 'Budgets saved successfully', true);
+        }
+
+        // --- JSON Backup/Restore ---
+        function closeRestoreModal() {
+            pendingRestoreFile = null;
+            document.getElementById('restoreConfirmModal').classList.remove('active');
+        }
+
+        async function confirmRestore() {
+            if (!pendingRestoreFile) return;
+            try {
+                const result = await importAllData(pendingRestoreFile);
+                showMessage('restoreMessage', `Restored ${result.expenses} expenses, ${result.recurringExpenses} recurring transactions`, true);
+                await initialize();
+            } catch (error) {
+                showMessage('restoreMessage', `Restore failed: ${error.message}`, false);
+            } finally {
+                closeRestoreModal();
+            }
+        }
+
         // --- Import/Export ---
         async function handleCsvImport(event) {
             const file = event.target.files[0];
@@ -700,6 +796,7 @@
                 categories = [...config.categories];
                 currentCurrency = config.currency;
                 currentStartDate = config.startDate;
+                currentBudgets = config.budgets || {};
                 recurringExpenses = recExpenses || [];
 
                 allTags.clear();
@@ -707,6 +804,7 @@
                 (recurringExpenses || []).forEach(exp => (exp.tags || []).forEach(tag => allTags.add(tag)));
 
                 renderCategories();
+                renderBudgetInputs();
                 populateCurrencySelect();
                 populateStartDateInput();
                 document.getElementById('recurringCategory').innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -747,6 +845,15 @@
         document.getElementById('saveStartDate').addEventListener('click', saveStartDateSetting);
         document.getElementById('csv-import-file').addEventListener('change', handleCsvImport);
         document.getElementById('csv-export-btn').addEventListener('click', exportCSV);
+        document.getElementById('saveBudgets').addEventListener('click', saveBudgets);
+        document.getElementById('json-export-btn').addEventListener('click', exportAllData);
+        document.getElementById('json-import-file').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            pendingRestoreFile = file;
+            document.getElementById('restoreConfirmModal').classList.add('active');
+            e.target.value = '';
+        });
         document.getElementById('newCategory').addEventListener('keypress', e => e.key === 'Enter' && addCategoryFromInput());
 
         document.getElementById('recurringExpenseForm').addEventListener('submit', async (e) => {
@@ -786,6 +893,8 @@
         window.showRecurringEditModal = showRecurringEditModal;
         window.closeRecurringEditModal = closeRecurringEditModal;
         window.confirmRecurringUpdate = confirmRecurringUpdate;
+        window.closeRestoreModal = closeRestoreModal;
+        window.confirmRestore = confirmRestore;
     </script>
 </body>
 </html>

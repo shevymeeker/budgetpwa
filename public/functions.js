@@ -140,6 +140,27 @@ function getMonthExpenses(expenses) {
     }).sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
+function enableSwipeNavigation(element, onSwipeLeft, onSwipeRight) {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    const SWIPE_THRESHOLD = 50;
+    const VERTICAL_THRESHOLD = 75;
+
+    element.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    element.addEventListener('touchend', (e) => {
+        const deltaX = e.changedTouches[0].screenX - touchStartX;
+        const deltaY = Math.abs(e.changedTouches[0].screenY - touchStartY);
+        if (Math.abs(deltaX) > SWIPE_THRESHOLD && deltaY < VERTICAL_THRESHOLD) {
+            if (deltaX < 0) onSwipeLeft();
+            else onSwipeRight();
+        }
+    }, { passive: true });
+}
+
 function escapeHTML(str) {
     if (typeof str !== 'string') return str;
     return str.replace(/[&<>'"]/g,

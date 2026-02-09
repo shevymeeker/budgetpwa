@@ -1,6 +1,6 @@
-// db.js - IndexedDB storage for ExpenseOwl Bill Tracker
+// db.js - IndexedDB storage for Wildman Money Tracker
 
-const DB_NAME = 'expenseowl';
+const DB_NAME = 'wildman-money-tracker';
 const DB_VERSION = 2;
 
 function openDB() {
@@ -181,7 +181,7 @@ async function exportAllData() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `expenseowl-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `wildman-money-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
 }

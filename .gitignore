@@ -1,6 +1,6 @@
 data
 main
-/expenseowl
+/wildman-money-tracker
 .DS_Store
 .vscode
 .env

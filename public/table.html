@@ -64,48 +64,57 @@
 
         <div class="form-container">
             <form id="expenseForm" class="expense-form">
-                <div class="form-group">
-                    <label for="name">Name</label>
-                    <input type="text" id="name" value="-" required>
+                <div class="form-group form-group-amount">
+                    <label for="amount">Amount</label>
+                    <input type="number" id="amount" step="0.01" min="0.01" max="9000000000000000" inputmode="decimal" placeholder="0.00" required>
                 </div>
 
-                <div class="form-group">
-                    <label for="category">Category</label>
-                    <select id="category" required>
+                <div class="form-group form-group-category">
+                    <label>Category</label>
+                    <div id="categoryChips" class="category-chips"></div>
+                    <select id="category" required class="category-select-desktop">
                         <option value="">categories</option>
                     </select>
                 </div>
 
-                <div class="form-group">
-                    <label for="tags-input">Tags</label>
-                    <div id="tags-input-container" class="tags-input-container">
-                        <div id="selected-tags" class="selected-tags"></div>
-                        <input type="text" id="tags-input" placeholder="(optional)">
+                <div class="form-optional-toggle">
+                    <button type="button" id="toggleOptionalFields" class="nav-button">
+                        <i class="fa-solid fa-chevron-down"></i> More Options
+                    </button>
+                </div>
+
+                <div id="optionalFields" class="form-optional-fields">
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" value="-" required>
                     </div>
-                    <div id="tags-dropdown" class="tags-dropdown"></div>
-                </div>
 
-                <div class="form-group">
-                    <label for="amount">Amount</label>
-                    <input type="number" id="amount" step="0.01" min="0.01" max="9000000000000000" required>
-                </div>
+                    <div class="form-group">
+                        <label for="tags-input">Tags</label>
+                        <div id="tags-input-container" class="tags-input-container">
+                            <div id="selected-tags" class="selected-tags"></div>
+                            <input type="text" id="tags-input" placeholder="(optional)">
+                        </div>
+                        <div id="tags-dropdown" class="tags-dropdown"></div>
+                    </div>
 
-                <div class="form-group">
-                    <label for="date">Date</label>
-                    <input type="date" id="date" required>
-                    <script>
-                        const today = new Date();
-                        const year = today.getFullYear();
-                        const month = String(today.getMonth() + 1).padStart(2, '0');
-                        const day = String(today.getDate()).padStart(2, '0');
-                        const formattedDate = `${year}-${month}-${day}`;
-                        document.getElementById('date').value = formattedDate;
-                    </script>
-                </div>
+                    <div class="form-group">
+                        <label for="date">Date</label>
+                        <input type="date" id="date" required>
+                        <script>
+                            const today = new Date();
+                            const year = today.getFullYear();
+                            const month = String(today.getMonth() + 1).padStart(2, '0');
+                            const day = String(today.getDate()).padStart(2, '0');
+                            const formattedDate = `${year}-${month}-${day}`;
+                            document.getElementById('date').value = formattedDate;
+                        </script>
+                    </div>
 
-                <div class="form-group form-group-checkbox">
-                    <label for="reportGain">Report Gain</label>
-                    <input type="checkbox" id="reportGain" class="styled-checkbox">
+                    <div class="form-group form-group-checkbox">
+                        <label for="reportGain">Report Gain</label>
+                        <input type="checkbox" id="reportGain" class="styled-checkbox">
+                    </div>
                 </div>
 
                 <button type="submit" class="nav-button">Add Expense</button>
@@ -113,8 +122,30 @@
             <div id="formMessage" class="form-message"></div>
         </div>
 
+        <div class="search-container">
+            <div class="search-input-wrapper">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="searchInput" placeholder="Search by name, category, or tag..." class="search-input">
+            </div>
+        </div>
+
         <div id="tableContainer">
         </div>
+
+        <nav class="bottom-nav" aria-label="Main navigation">
+            <a href="/" class="bottom-nav-item">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="/table.html" class="bottom-nav-item active">
+                <i class="fa-solid fa-table"></i>
+                <span>Table</span>
+            </a>
+            <a href="/settings.html" class="bottom-nav-item">
+                <i class="fa-solid fa-gear"></i>
+                <span>Settings</span>
+            </a>
+        </nav>
     </div>
 
     <div id="deleteModal" class="modal">
@@ -184,12 +215,23 @@
 
         function updateTable() {
             const showAll = document.getElementById('showAllToggle').checked;
+            const searchTerm = (document.getElementById('searchInput').value || '').trim().toLowerCase();
             document.querySelector('.month-navigation').style.display = showAll ? 'none' : 'flex';
 
-            expensesForTable = showAll
+            let filtered = showAll
                 ? allExpenses.slice().sort((a, b) => new Date(b.date) - new Date(a.date))
                 : getMonthExpenses(allExpenses);
 
+            if (searchTerm) {
+                filtered = filtered.filter(exp => {
+                    const nameMatch = (exp.name || '').toLowerCase().includes(searchTerm);
+                    const categoryMatch = (exp.category || '').toLowerCase().includes(searchTerm);
+                    const tagMatch = (exp.tags || []).some(tag => tag.toLowerCase().includes(searchTerm));
+                    return nameMatch || categoryMatch || tagMatch;
+                });
+            }
+
+            expensesForTable = filtered;
             const tableContainer = document.getElementById('tableContainer');
             tableContainer.innerHTML = createTable(expensesForTable);
         }
@@ -229,6 +271,12 @@
             document.getElementById('amount').value = Math.abs(amount);
             document.getElementById('reportGain').checked = isGain;
             renderSelectedTags(tags);
+
+            // Expand optional fields and sync category chips
+            document.getElementById('optionalFields').classList.add('expanded');
+            document.querySelectorAll('.category-chip').forEach(c => {
+                c.classList.toggle('active', c.dataset.category === category);
+            });
 
             const localDate = new Date(date);
             const year = localDate.getFullYear();
@@ -317,6 +365,22 @@
             });
         }
 
+        function renderCategoryChips(categories) {
+            const container = document.getElementById('categoryChips');
+            const select = document.getElementById('category');
+            container.innerHTML = categories.map((cat, i) =>
+                `<button type="button" class="category-chip${i === 0 ? ' active' : ''}" data-category="${escapeHTML(cat)}">${escapeHTML(cat)}</button>`
+            ).join('');
+            if (!select.value && categories.length > 0) select.value = categories[0];
+            container.addEventListener('click', (e) => {
+                const chip = e.target.closest('.category-chip');
+                if (!chip) return;
+                container.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                select.value = chip.dataset.category;
+            });
+        }
+
         async function initialize() {
             try {
                 const config = await getConfig();
@@ -337,6 +401,7 @@
                     }
                 });
 
+                renderCategoryChips(config.categories);
                 updateMonthDisplay();
                 updateTable();
                 setupTagInput();
@@ -453,6 +518,32 @@
         document.getElementById('name').addEventListener('click', (e) => {
             if (e.target.value === '-') {
                 e.target.value = '';
+            }
+        });
+
+        document.getElementById('searchInput').addEventListener('input', updateTable);
+
+        document.getElementById('toggleOptionalFields').addEventListener('click', function() {
+            const fields = document.getElementById('optionalFields');
+            fields.classList.toggle('expanded');
+            const icon = this.querySelector('i');
+            icon.classList.toggle('fa-chevron-down');
+            icon.classList.toggle('fa-chevron-up');
+        });
+
+        // Swipe on table container for month navigation
+        const tableSwipeTarget = document.getElementById('tableContainer');
+        enableSwipeNavigation(tableSwipeTarget, () => {
+            if (!document.getElementById('showAllToggle').checked) {
+                currentDate.setMonth(currentDate.getMonth() + 1);
+                updateMonthDisplay();
+                updateTable();
+            }
+        }, () => {
+            if (!document.getElementById('showAllToggle').checked) {
+                currentDate.setMonth(currentDate.getMonth() - 1);
+                updateMonthDisplay();
+                updateTable();
             }
         });
 

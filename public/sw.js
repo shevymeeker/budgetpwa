@@ -1,4 +1,4 @@
-const CACHE_NAME = 'expenseowl-static-v1';
+const CACHE_NAME = 'expenseowl-static-v2';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -12,7 +12,11 @@ const STATIC_ASSETS = [
     '/manifest.json',
     '/favicon.ico',
     '/pwa/icon-192.png',
-    '/pwa/icon-512.png'
+    '/pwa/icon-512.png',
+    '/webfonts/fa-solid-900.woff2',
+    '/webfonts/fa-regular-400.woff2',
+    '/webfonts/fa-brands-400.woff2',
+    '/webfonts/fa-v4compatibility.woff2'
 ];
 
 self.addEventListener('install', (event) => {
@@ -32,7 +36,6 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    // Cache-first for all requests (everything is static/local)
     event.respondWith(
         caches.match(event.request).then((cached) => {
             if (cached) return cached;
@@ -42,6 +45,11 @@ self.addEventListener('fetch', (event) => {
                     caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
                 }
                 return response;
+            }).catch(() => {
+                // Offline fallback: if requesting a page, return the cached index
+                if (event.request.mode === 'navigate') {
+                    return caches.match('/index.html');
+                }
             });
         })
     );

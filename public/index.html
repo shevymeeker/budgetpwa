@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <link rel="stylesheet" href="/fa.min.css">
-    <meta name="theme-color" content="#081528" media="(prefers-color-scheme: dark)">
-    <meta name="theme-color" content="#f2e5d7" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0b0f19" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f7f7f5" media="(prefers-color-scheme: light)">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -37,7 +37,7 @@
         <header>
             <div class="nav-bar">
                 <a href="/">
-                    <img src="/pwa/icon.png.png" alt="ExpenseOwl Logo">
+                    <img src="/pwa/icon-192.png" alt="ExpenseOwl Logo">
                 </a>
                 <a href="/" class="view-button active" data-tooltip="Dashboard">
                     <i class="fa-solid fa-chart-pie"></i>
@@ -273,7 +273,7 @@
                     datasets: [{
                         data: categoryData.map(c => c.total),
                         backgroundColor: categoryData.map(c => categoryColors[c.category]),
-                        borderColor: '#1a1a1a',
+                        borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-secondary').trim() || '#141925',
                         borderWidth: 1
                     }]
                 },
@@ -426,8 +426,8 @@
             }
         }
 
-        Chart.defaults.color = '#b3b3b3';
-        Chart.defaults.borderColor = '#606060';
+        Chart.defaults.color = '#7f879c';
+        Chart.defaults.borderColor = '#1e2438';
         Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
         function setupTagInput() {

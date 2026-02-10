@@ -72,10 +72,20 @@
                 <input type="text" id="editBillName" required>
                 <label>Amount</label>
                 <input type="number" id="editBillAmount" step="0.01" min="0.01" required>
-                <label>Next due date</label>
-                <input type="date" id="editBillDueDate" required>
-                <label>Last paid</label>
-                <input type="date" id="editBillLastPaid">
+                <label>Billing Cycle</label>
+                <select id="editBillCycle" required>
+                    <option value="">Select Cycle</option>
+                    <option value="Weekly">Weekly</option>
+                    <option value="Bi-Monthly">Bi-Monthly</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Quarterly">Quarterly</option>
+                    <option value="Bi-Annually">Bi-Annually</option>
+                    <option value="Annually">Annually</option>
+                </select>
+                <label>Last Payment</label>
+                <input type="date" id="editBillLastPayment">
+                <label>Next Payment</label>
+                <input type="date" id="editBillNextPayment" required>
             </div>
             <div class="modal-buttons">
                 <button class="modal-btn" onclick="closeEditBill()">Cancel</button>
@@ -92,8 +102,18 @@
                 <input type="text" id="editIncomeName" required>
                 <label>Amount</label>
                 <input type="number" id="editIncomeAmount" step="0.01" min="0.01" required>
-                <label>Date</label>
-                <input type="date" id="editIncomeDate" required>
+                <label>Pay Cycle</label>
+                <select id="editIncomeCycle" required>
+                    <option value="">Select Cycle</option>
+                    <option value="Weekly">Weekly</option>
+                    <option value="Bi-Monthly">Bi-Monthly</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Other">Other</option>
+                </select>
+                <label>Last Paycheck</label>
+                <input type="date" id="editIncomeLastPaycheck">
+                <label>Next Paycheck</label>
+                <input type="date" id="editIncomeNextPaycheck" required>
             </div>
             <div class="modal-buttons">
                 <button class="modal-btn" onclick="closeEditIncome()">Cancel</button>
@@ -135,20 +155,26 @@
                 container.innerHTML = '<div class="empty-state">No bills</div>';
                 return;
             }
-            const sorted = [...allBills].sort((a,b) => a.dueDate.localeCompare(b.dueDate));
+            const sorted = [...allBills].sort((a,b) => {
+                const dateA = a.nextPayment || a.dueDate;
+                const dateB = b.nextPayment || b.dueDate;
+                return dateA.localeCompare(dateB);
+            });
             container.innerHTML = `<table class="data-table">
                 <thead><tr>
                     <th>Name</th>
                     <th>Amount</th>
-                    <th>Due</th>
-                    <th>Last paid</th>
+                    <th>Cycle</th>
+                    <th>Next Payment</th>
+                    <th>Last Paid</th>
                     <th></th>
                 </tr></thead>
                 <tbody>${sorted.map(b => `<tr>
                     <td>${escapeHTML(b.name)}</td>
                     <td class="col-amount">${formatCurrency(b.amount)}</td>
-                    <td class="col-date">${formatDate(b.dueDate)}</td>
-                    <td class="col-date">${b.lastPaid ? formatDate(b.lastPaid) : '--'}</td>
+                    <td class="col-cycle">${b.cycle || 'Monthly'}</td>
+                    <td class="col-date">${formatDate(b.nextPayment || b.dueDate)}</td>
+                    <td class="col-date">${b.lastPayment || b.lastPaid ? formatDate(b.lastPayment || b.lastPaid) : '--'}</td>
                     <td class="col-actions">
                         <button class="btn-icon" onclick="openEditBill('${b.id}')"><i class="fa-solid fa-pen"></i></button>
                         <button class="btn-icon danger" onclick="openDelete('bill','${b.id}','${escapeHTML(b.name)}')"><i class="fa-solid fa-trash"></i></button>
@@ -163,18 +189,24 @@
                 container.innerHTML = '<div class="empty-state">No income</div>';
                 return;
             }
-            const sorted = [...allIncome].sort((a,b) => b.date.localeCompare(a.date));
+            const sorted = [...allIncome].sort((a,b) => {
+                const dateA = a.nextPaycheck || a.date;
+                const dateB = b.nextPaycheck || b.date;
+                return dateB.localeCompare(dateA);
+            });
             container.innerHTML = `<table class="data-table">
                 <thead><tr>
                     <th>Name</th>
                     <th>Amount</th>
-                    <th>Date</th>
+                    <th>Pay Cycle</th>
+                    <th>Next Paycheck</th>
                     <th></th>
                 </tr></thead>
                 <tbody>${sorted.map(i => `<tr>
                     <td>${escapeHTML(i.name)}</td>
                     <td class="col-amount">${formatCurrency(i.amount)}</td>
-                    <td class="col-date">${formatDate(i.date)}</td>
+                    <td class="col-cycle">${i.cycle || 'Monthly'}</td>
+                    <td class="col-date">${formatDate(i.nextPaycheck || i.date)}</td>
                     <td class="col-actions">
                         <button class="btn-icon" onclick="openEditIncome('${i.id}')"><i class="fa-solid fa-pen"></i></button>
                         <button class="btn-icon danger" onclick="openDelete('income','${i.id}','${escapeHTML(i.name)}')"><i class="fa-solid fa-trash"></i></button>
@@ -189,8 +221,9 @@
             editingBillId = id;
             document.getElementById('editBillName').value = bill.name;
             document.getElementById('editBillAmount').value = bill.amount;
-            document.getElementById('editBillDueDate').value = bill.dueDate;
-            document.getElementById('editBillLastPaid').value = bill.lastPaid || '';
+            document.getElementById('editBillCycle').value = bill.cycle || '';
+            document.getElementById('editBillLastPayment').value = bill.lastPayment || bill.lastPaid || '';
+            document.getElementById('editBillNextPayment').value = bill.nextPayment || bill.dueDate;
             document.getElementById('editBillModal').classList.add('active');
         }
 
@@ -201,11 +234,18 @@
 
         async function saveEditBill() {
             if (!editingBillId) return;
+            const cycle = document.getElementById('editBillCycle').value;
+            const lastPayment = document.getElementById('editBillLastPayment').value || null;
+            const nextPayment = document.getElementById('editBillNextPayment').value;
+
             const bill = {
                 name: document.getElementById('editBillName').value.trim(),
                 amount: parseFloat(document.getElementById('editBillAmount').value),
-                dueDate: document.getElementById('editBillDueDate').value,
-                lastPaid: document.getElementById('editBillLastPaid').value || null
+                cycle: cycle,
+                lastPayment: lastPayment,
+                nextPayment: nextPayment,
+                dueDate: nextPayment,
+                lastPaid: lastPayment
             };
             await updateBill(editingBillId, bill);
             closeEditBill();
@@ -218,7 +258,9 @@
             editingIncomeId = id;
             document.getElementById('editIncomeName').value = entry.name;
             document.getElementById('editIncomeAmount').value = entry.amount;
-            document.getElementById('editIncomeDate').value = entry.date;
+            document.getElementById('editIncomeCycle').value = entry.cycle || '';
+            document.getElementById('editIncomeLastPaycheck').value = entry.lastPaycheck || '';
+            document.getElementById('editIncomeNextPaycheck').value = entry.nextPaycheck || entry.date;
             document.getElementById('editIncomeModal').classList.add('active');
         }
 
@@ -229,10 +271,17 @@
 
         async function saveEditIncome() {
             if (!editingIncomeId) return;
+            const cycle = document.getElementById('editIncomeCycle').value;
+            const lastPaycheck = document.getElementById('editIncomeLastPaycheck').value || null;
+            const nextPaycheck = document.getElementById('editIncomeNextPaycheck').value;
+
             const entry = {
                 name: document.getElementById('editIncomeName').value.trim(),
                 amount: parseFloat(document.getElementById('editIncomeAmount').value),
-                date: document.getElementById('editIncomeDate').value
+                cycle: cycle,
+                lastPaycheck: lastPaycheck,
+                nextPaycheck: nextPaycheck,
+                date: nextPaycheck
             };
             await updateIncome(editingIncomeId, entry);
             closeEditIncome();

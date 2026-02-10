@@ -1,7 +1,7 @@
 // db.js - IndexedDB storage for Wildman Money Tracker
 
 const DB_NAME = 'wildman-money-tracker';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 function openDB() {
     return new Promise((resolve, reject) => {

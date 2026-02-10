@@ -173,3 +173,108 @@ function escapeHTML(str) {
         }[tag] || tag)
     );
 }
+
+// Date calculation utilities for recurring bills and income
+function calculateNextDate(lastDate, cycle) {
+    if (!lastDate) return null;
+    const date = new Date(lastDate + 'T00:00:00');
+
+    switch(cycle) {
+        case 'Weekly':
+            date.setDate(date.getDate() + 7);
+            break;
+        case 'Bi-Monthly':
+            date.setDate(date.getDate() + 14);
+            break;
+        case 'Monthly':
+            date.setMonth(date.getMonth() + 1);
+            break;
+        case 'Quarterly':
+            date.setMonth(date.getMonth() + 3);
+            break;
+        case 'Bi-Annually':
+            date.setMonth(date.getMonth() + 6);
+            break;
+        case 'Annually':
+            date.setFullYear(date.getFullYear() + 1);
+            break;
+        default:
+            return null;
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function calculatePreviousDate(nextDate, cycle) {
+    if (!nextDate) return null;
+    const date = new Date(nextDate + 'T00:00:00');
+
+    switch(cycle) {
+        case 'Weekly':
+            date.setDate(date.getDate() - 7);
+            break;
+        case 'Bi-Monthly':
+            date.setDate(date.getDate() - 14);
+            break;
+        case 'Monthly':
+            date.setMonth(date.getMonth() - 1);
+            break;
+        case 'Quarterly':
+            date.setMonth(date.getMonth() - 3);
+            break;
+        case 'Bi-Annually':
+            date.setMonth(date.getMonth() - 6);
+            break;
+        case 'Annually':
+            date.setFullYear(date.getFullYear() - 1);
+            break;
+        default:
+            return null;
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// Get all occurrences of a recurring bill/income in a date range
+function getRecurringOccurrences(startDate, cycle, rangeStart, rangeEnd) {
+    const occurrences = [];
+    if (!startDate || !cycle) return occurrences;
+
+    let currentDate = new Date(startDate + 'T00:00:00');
+    const rangeStartDate = new Date(rangeStart + 'T00:00:00');
+    const rangeEndDate = new Date(rangeEnd + 'T00:00:00');
+
+    // Move backwards to find the first occurrence in or before the range
+    while (currentDate > rangeStartDate) {
+        const prevDateStr = calculatePreviousDate(
+            currentDate.toISOString().split('T')[0],
+            cycle
+        );
+        if (!prevDateStr) break;
+        currentDate = new Date(prevDateStr + 'T00:00:00');
+    }
+
+    // Now move forward and collect all occurrences in the range
+    while (currentDate <= rangeEndDate) {
+        if (currentDate >= rangeStartDate) {
+            const year = currentDate.getFullYear();
+            const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+            const day = String(currentDate.getDate()).padStart(2, '0');
+            occurrences.push(`${year}-${month}-${day}`);
+        }
+        const nextDateStr = calculateNextDate(
+            currentDate.toISOString().split('T')[0],
+            cycle
+        );
+        if (!nextDateStr) break;
+        currentDate = new Date(nextDateStr + 'T00:00:00');
+    }
+
+    return occurrences;
+}

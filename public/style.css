@@ -274,11 +274,32 @@ header {
 
 .bill-item:last-child { border-bottom: none; }
 
+.bill-item.next-due {
+    background: var(--bg-raised);
+    padding: 0.85rem 0.75rem;
+    margin: 0 -0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
 .bill-status {
     width: 3px;
     height: 28px;
     border-radius: 2px;
     flex-shrink: 0;
+}
+
+.next-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--accent);
+    padding: 0.15rem 0.35rem;
+    border-radius: 4px;
+    background: var(--accent);
+    color: var(--bg);
+    margin-left: 0.5rem;
+    vertical-align: middle;
 }
 
 .bill-status.overdue { background: var(--overdue); }

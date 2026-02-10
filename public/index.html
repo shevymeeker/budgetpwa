@@ -91,7 +91,19 @@
                     <input type="text" id="billName" placeholder="Bill name" required>
                     <div class="form-row">
                         <input type="number" id="billAmount" step="0.01" min="0.01" placeholder="Amount" inputmode="decimal" required>
-                        <input type="date" id="billDueDate" required>
+                        <select id="billCycle" required>
+                            <option value="">Billing Cycle</option>
+                            <option value="Weekly">Weekly</option>
+                            <option value="Bi-Monthly">Bi-Monthly</option>
+                            <option value="Monthly">Monthly</option>
+                            <option value="Quarterly">Quarterly</option>
+                            <option value="Bi-Annually">Bi-Annually</option>
+                            <option value="Annually">Annually</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <input type="date" id="billLastPayment" placeholder="Last Payment" required>
+                        <input type="date" id="billNextPayment" placeholder="Next Payment" required>
                     </div>
                     <button type="submit" class="btn-primary">Add bill</button>
                 </form>
@@ -112,11 +124,21 @@
                     <input type="text" id="incomeName" placeholder="Income source" required>
                     <div class="form-row">
                         <input type="number" id="incomeAmount" step="0.01" min="0.01" placeholder="Amount" inputmode="decimal" required>
-                        <input type="date" id="incomeDate" required>
+                        <select id="incomeCycle" required>
+                            <option value="">Pay Cycle</option>
+                            <option value="Weekly">Weekly</option>
+                            <option value="Bi-Monthly">Bi-Monthly</option>
+                            <option value="Monthly">Monthly</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <input type="date" id="incomeLastPaycheck" placeholder="Last Paycheck" required>
+                        <input type="date" id="incomeNextPaycheck" placeholder="Next Paycheck" required>
                     </div>
                     <button type="submit" class="btn-primary">Add income</button>
                 </form>
-                <div id="incomeMessage" class="form-message"></div>
+<div id="incomeMessage" class="form-message"></div>
             </div>
 
             <div id="incomeList" class="items-list"></div>
@@ -217,19 +239,22 @@
         }
 
         function billStatus(bill) {
-            const days = daysUntil(bill.dueDate);
+            const dueDate = bill.nextPayment || bill.dueDate;
+            const days = daysUntil(dueDate);
             if (days < 0) return 'overdue';
             if (days <= 3) return 'due-soon';
             return 'upcoming';
         }
 
         function billDueText(bill) {
-            const days = daysUntil(bill.dueDate);
-            if (days < 0) return `<span class="overdue-text">Overdue ${Math.abs(days)}d</span>`;
-            if (days === 0) return `<span class="due-soon-text">Due today</span>`;
-            if (days === 1) return `<span class="due-soon-text">Due tomorrow</span>`;
-            if (days <= 3) return `<span class="due-soon-text">Due in ${days}d</span>`;
-            return `Due ${formatDate(bill.dueDate)}`;
+            const dueDate = bill.nextPayment || bill.dueDate;
+            const days = daysUntil(dueDate);
+            const cycleText = bill.cycle ? ` (${bill.cycle})` : '';
+            if (days < 0) return `<span class="overdue-text">Overdue ${Math.abs(days)}d</span>${cycleText}`;
+            if (days === 0) return `<span class="due-soon-text">Due today</span>${cycleText}`;
+            if (days === 1) return `<span class="due-soon-text">Due tomorrow</span>${cycleText}`;
+            if (days <= 3) return `<span class="due-soon-text">Due in ${days}d</span>${cycleText}`;
+            return `Due ${formatDate(dueDate)}${cycleText}`;
         }
 
         function advanceMonth(dateStr) {
@@ -247,18 +272,24 @@
                 return;
             }
             const sorted = [...allBills].sort((a,b) => {
-                const da = daysUntil(a.dueDate), db = daysUntil(b.dueDate);
+                const dateA = a.nextPayment || a.dueDate;
+                const dateB = b.nextPayment || b.dueDate;
+                const da = daysUntil(dateA), db = daysUntil(dateB);
                 if (da < 0 && db >= 0) return -1;
                 if (db < 0 && da >= 0) return 1;
                 return da - db;
             });
-            list.innerHTML = sorted.map(bill => {
+            list.innerHTML = sorted.map((bill, index) => {
                 const status = billStatus(bill);
-                const lastPaidText = bill.lastPaid ? `Paid ${formatDate(bill.lastPaid)}` : '';
-                return `<div class="bill-item">
+                const lastPaidText = bill.lastPaid || bill.lastPayment ?
+                    `Paid ${formatDate(bill.lastPaid || bill.lastPayment)}` : '';
+                const isNextDue = index === 0;
+                const highlightClass = isNextDue ? ' next-due' : '';
+
+                return `<div class="bill-item${highlightClass}">
                     <div class="bill-status ${status}"></div>
                     <div class="bill-info">
-                        <div class="bill-name">${escapeHTML(bill.name)}</div>
+                        <div class="bill-name">${escapeHTML(bill.name)}${isNextDue ? ' <span class="next-badge">NEXT</span>' : ''}</div>
                         <div class="bill-due">${billDueText(bill)}${lastPaidText ? ' &middot; ' + lastPaidText : ''}</div>
                     </div>
                     <div class="bill-amount">${formatCurrency(bill.amount)}</div>
@@ -504,23 +535,61 @@
             const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
             const currentMonthName = monthNames[now.getMonth()];
 
-            // Map bills to day-of-month from their due dates
+            // Calculate month range
+            const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+            const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+            // Map bills to day-of-month from their due dates, handling recurring cycles
             const billsByDay = new Array(daysInMonth).fill(0);
             allBills.forEach(b => {
-                const d = new Date(b.dueDate + 'T00:00:00');
-                const day = d.getDate();
-                if (day >= 1 && day <= daysInMonth) {
-                    billsByDay[day - 1] += b.amount;
+                if (b.cycle && (b.nextPayment || b.lastPayment)) {
+                    // For recurring bills, calculate all occurrences in the current month
+                    const startDate = b.lastPayment || b.nextPayment;
+                    const occurrences = getRecurringOccurrences(startDate, b.cycle, monthStart, monthEnd);
+                    occurrences.forEach(dateStr => {
+                        const d = new Date(dateStr + 'T00:00:00');
+                        const day = d.getDate();
+                        if (day >= 1 && day <= daysInMonth) {
+                            billsByDay[day - 1] += b.amount;
+                        }
+                    });
+                } else {
+                    // For non-recurring or legacy bills, use the due date
+                    const dueDate = b.nextPayment || b.dueDate;
+                    if (dueDate) {
+                        const d = new Date(dueDate + 'T00:00:00');
+                        const day = d.getDate();
+                        if (day >= 1 && day <= daysInMonth) {
+                            billsByDay[day - 1] += b.amount;
+                        }
+                    }
                 }
             });
 
-            // Map income to day-of-month
+            // Map income to day-of-month, handling recurring cycles
             const incomeByDay = new Array(daysInMonth).fill(0);
             allIncome.forEach(inc => {
-                const d = new Date(inc.date + 'T00:00:00');
-                const day = d.getDate();
-                if (day >= 1 && day <= daysInMonth) {
-                    incomeByDay[day - 1] += inc.amount;
+                if (inc.cycle && inc.cycle !== 'Other' && (inc.nextPaycheck || inc.lastPaycheck)) {
+                    // For recurring income, calculate all occurrences in the current month
+                    const startDate = inc.lastPaycheck || inc.nextPaycheck;
+                    const occurrences = getRecurringOccurrences(startDate, inc.cycle, monthStart, monthEnd);
+                    occurrences.forEach(dateStr => {
+                        const d = new Date(dateStr + 'T00:00:00');
+                        const day = d.getDate();
+                        if (day >= 1 && day <= daysInMonth) {
+                            incomeByDay[day - 1] += inc.amount;
+                        }
+                    });
+                } else {
+                    // For non-recurring or legacy income, use the date
+                    const incomeDate = inc.nextPaycheck || inc.date;
+                    if (incomeDate) {
+                        const d = new Date(incomeDate + 'T00:00:00');
+                        const day = d.getDate();
+                        if (day >= 1 && day <= daysInMonth) {
+                            incomeByDay[day - 1] += inc.amount;
+                        }
+                    }
                 }
             });
 
@@ -628,8 +697,24 @@
         async function markPaid(id) {
             const bill = allBills.find(b => b.id === id);
             if (!bill) return;
-            bill.lastPaid = todayStr();
-            bill.dueDate = advanceMonth(bill.dueDate);
+
+            const today = todayStr();
+            bill.lastPaid = today;
+            bill.lastPayment = today;
+
+            // Calculate next payment based on cycle
+            if (bill.cycle) {
+                const nextDate = calculateNextDate(today, bill.cycle);
+                if (nextDate) {
+                    bill.nextPayment = nextDate;
+                    bill.dueDate = nextDate;
+                }
+            } else {
+                // Legacy bills without cycle - advance by one month
+                bill.dueDate = advanceMonth(bill.dueDate);
+                bill.nextPayment = bill.dueDate;
+            }
+
             await updateBill(id, bill);
             await loadData();
         }
@@ -665,14 +750,20 @@
         document.getElementById('billForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             try {
+                const cycle = document.getElementById('billCycle').value;
+                const lastPayment = document.getElementById('billLastPayment').value;
+                const nextPayment = document.getElementById('billNextPayment').value;
+
                 await addBill({
                     name: document.getElementById('billName').value.trim(),
                     amount: parseFloat(document.getElementById('billAmount').value),
-                    dueDate: document.getElementById('billDueDate').value,
-                    lastPaid: null
+                    cycle: cycle,
+                    lastPayment: lastPayment,
+                    nextPayment: nextPayment,
+                    dueDate: nextPayment,
+                    lastPaid: lastPayment
                 });
                 document.getElementById('billForm').reset();
-                document.getElementById('billDueDate').value = todayStr();
                 showMsg('billMessage', 'Bill added', true);
                 await loadData();
             } catch (err) {
@@ -683,13 +774,19 @@
         document.getElementById('incomeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             try {
+                const cycle = document.getElementById('incomeCycle').value;
+                const lastPaycheck = document.getElementById('incomeLastPaycheck').value;
+                const nextPaycheck = document.getElementById('incomeNextPaycheck').value;
+
                 await addIncome({
                     name: document.getElementById('incomeName').value.trim(),
                     amount: parseFloat(document.getElementById('incomeAmount').value),
-                    date: document.getElementById('incomeDate').value
+                    cycle: cycle,
+                    lastPaycheck: lastPaycheck,
+                    nextPaycheck: nextPaycheck,
+                    date: nextPaycheck
                 });
                 document.getElementById('incomeForm').reset();
-                document.getElementById('incomeDate').value = todayStr();
                 showMsg('incomeMessage', 'Income added', true);
                 await loadData();
             } catch (err) {
@@ -698,8 +795,6 @@
         });
 
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('billDueDate').value = todayStr();
-            document.getElementById('incomeDate').value = todayStr();
             loadData();
         });
 
